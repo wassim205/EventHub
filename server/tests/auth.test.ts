@@ -50,6 +50,34 @@ describe("POST /api/auth/login", () => {
   it("valide le format de l'email", async () => {
     await request(app).post("/api/auth/login").send({ email: "pas-un-email", password: "x" }).expect(400);
   });
+
+  it("renvoie 400 et non 500 sur un corps JSON illisible", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .set("Content-Type", "application/json")
+      .send("{ ceci n'est pas du json")
+      .expect(400);
+
+    expect(response.body.error.code).toBe("MALFORMED_REQUEST");
+  });
+
+  it("ne marque le cookie Secure que sur une requête HTTPS", async () => {
+    const plain = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ADMIN_EMAIL, password: PASSWORD })
+      .expect(200);
+    const plainCookie = String(plain.headers["set-cookie"]);
+    expect(plainCookie).toContain("HttpOnly");
+    expect(plainCookie).toContain("SameSite=Lax");
+    expect(plainCookie).not.toContain("Secure");
+
+    const secured = await request(app)
+      .post("/api/auth/login")
+      .set("X-Forwarded-Proto", "https")
+      .send({ email: ADMIN_EMAIL, password: PASSWORD })
+      .expect(200);
+    expect(String(secured.headers["set-cookie"])).toContain("Secure");
+  });
 });
 
 describe("GET /api/auth/me", () => {

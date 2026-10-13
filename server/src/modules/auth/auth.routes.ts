@@ -10,7 +10,7 @@ authRouter.post("/login", async (req, res) => {
   const { email, password } = loginSchema.parse(req.body);
   const { accessToken, refreshToken, user } = await authService.login(email, password);
 
-  authService.setRefreshCookie(res, refreshToken);
+  authService.setRefreshCookie(req, res, refreshToken);
   res.json({
     data: { accessToken, expiresIn: env.ACCESS_TOKEN_TTL, user },
   });
@@ -26,7 +26,7 @@ authRouter.post("/refresh", async (req, res) => {
   }
 
   const { accessToken, refreshToken, user } = await authService.refresh(rawToken);
-  authService.setRefreshCookie(res, refreshToken);
+  authService.setRefreshCookie(req, res, refreshToken);
   res.json({ data: { accessToken, expiresIn: env.ACCESS_TOKEN_TTL, user } });
 });
 

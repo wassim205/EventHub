@@ -8,6 +8,10 @@ export function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
+  // Derrière nginx, le protocole réel est porté par X-Forwarded-Proto : sans
+  // cette confiance `req.secure` serait toujours false et le cookie de session
+  // ne serait jamais marqué Secure, même en HTTPS.
+  app.set("trust proxy", true);
   app.use(express.json());
   app.use(cookieParser());
 

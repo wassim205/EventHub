@@ -64,6 +64,23 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     return;
   }
 
+  // Erreurs levées par express.json() sur un corps illisible (JSON malformé) :
+  // elles portent déjà un statut 4xx exploitable au client.
+  if (typeof error === "object" && error !== null) {
+    const httpError = error as { status?: unknown; statusCode?: unknown; expose?: unknown; message?: unknown };
+    const status = typeof httpError.status === "number" ? httpError.status : httpError.statusCode;
+
+    if (typeof status === "number" && status >= 400 && status < 500 && httpError.expose === true) {
+      res.status(status).json({
+        error: {
+          code: "MALFORMED_REQUEST",
+          message: typeof httpError.message === "string" ? httpError.message : "Requête invalide.",
+        },
+      });
+      return;
+    }
+  }
+
   console.error(error);
   res.status(500).json({
     error: {

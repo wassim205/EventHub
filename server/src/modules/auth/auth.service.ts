@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
 import { AppError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
@@ -101,10 +101,13 @@ export async function getProfile(userId: string) {
   return user;
 }
 
-export function setRefreshCookie(res: Response, token: string): void {
+export function setRefreshCookie(req: Request, res: Response, token: string): void {
   res.cookie(env.REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
+    // `secure` suit le protocole réellement utilisé plutôt que NODE_ENV : en
+    // local le front est servi en HTTP, et un cookie Secure y serait refusé
+    // par le navigateur.
+    secure: req.secure,
     sameSite: "lax",
     path: "/api/auth",
     maxAge: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
