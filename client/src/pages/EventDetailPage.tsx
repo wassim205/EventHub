@@ -9,9 +9,12 @@ import type {
   RegistrationStatus,
 } from "../api/types";
 import { EventStatusBadge, RegistrationStatusBadge } from "../components/StatusBadge";
+import { NotFoundPage } from "./NotFoundPage";
 import { Alert, Button, Card, EmptyState, Field, Input, PageHeader, Spinner } from "../components/ui";
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" });
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const statusActions: Record<EventStatus, Array<{ to: EventStatus; label: string; variant: "primary" | "danger" | "secondary" }>> = {
   draft: [{ to: "published", label: "Publier", variant: "primary" }],
@@ -27,7 +30,7 @@ export function EventDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id || !UUID_PATTERN.test(id)) return;
     setLoading(true);
     setError("");
     try {
@@ -66,7 +69,14 @@ export function EventDetailPage() {
       await api.patch(`/registrations/${registrationId}/status`, { status });
     });
 
-  if (loading && !event) {
+  // Le segment `:id` accepte n'importe quelle chaîne. Un identifiant mal formé ne
+// peut pas désigner un événement : mieux vaut la page 404 qu'une erreur de
+// validation brute.
+if (!id || !UUID_PATTERN.test(id)) {
+  return <NotFoundPage />;
+}
+
+if (loading && !event) {
     return <Spinner label="Chargement de l'événement" />;
   }
 
