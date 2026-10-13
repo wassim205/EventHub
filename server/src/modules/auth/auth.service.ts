@@ -36,13 +36,20 @@ async function openSession(user: SessionUser) {
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  // Le hash est chargé pour la comparaison mais n'est jamais renvoyé au client.
+  const record = await prisma.user.findUnique({
+    where: { email },
+    select: { ...publicUserSelect, passwordHash: true },
+  });
 
   // Le même message pour un email inconnu et un mauvais mot de passe : on ne
   // révèle pas quelles adresses existent.
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  if (!record || !(await verifyPassword(password, record.passwordHash))) {
     throw AppError.unauthorized("INVALID_CREDENTIALS", "Email ou mot de passe incorrect.");
   }
+
+  const { passwordHash, ...user } = record;
+  void passwordHash;
 
   const session = await openSession(user);
   return { ...session, user };

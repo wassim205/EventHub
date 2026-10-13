@@ -23,6 +23,16 @@ function startOfDay(date: Date): Date {
   return day;
 }
 
+/** Forme commune des réponses : le compteur d'inscriptions actives est exposé
+ *  directement plutôt que dans `_count`, comme pour les participants. */
+function withSeats<T extends { maxParticipants: number; _count: { registrations: number } }>(event: T) {
+  return {
+    ...event,
+    registrationsCount: event._count.registrations,
+    remainingSeats: Math.max(0, event.maxParticipants - event._count.registrations),
+  };
+}
+
 export async function listEvents(query: ListEventsQuery) {
   const where = {
     ...(query.status ? { status: query.status } : {}),
@@ -42,15 +52,7 @@ export async function listEvents(query: ListEventsQuery) {
     prisma.event.count({ where }),
   ]);
 
-  return paginated(
-    events.map((event) => ({
-      ...event,
-      registrationsCount: event._count.registrations,
-      remainingSeats: Math.max(0, event.maxParticipants - event._count.registrations),
-    })),
-    total,
-    query,
-  );
+  return paginated(events.map(withSeats), total, query);
 }
 
 export async function getEvent(id: string) {
@@ -81,7 +83,7 @@ export async function getEvent(id: string) {
 }
 
 export async function createEvent(input: CreateEventInput, createdById: string) {
-  return prisma.event.create({
+  const event = await prisma.event.create({
     data: {
       title: input.title,
       description: input.description,
@@ -93,16 +95,20 @@ export async function createEvent(input: CreateEventInput, createdById: string) 
     },
     include: eventListInclude,
   });
+
+  return withSeats(event);
 }
 
 export async function updateEvent(id: string, input: UpdateEventInput) {
   await findEventOrThrow(id);
 
-  return prisma.event.update({
+  const event = await prisma.event.update({
     where: { id },
     data: input,
     include: eventListInclude,
   });
+
+  return withSeats(event);
 }
 
 export async function changeEventStatus(id: string, nextStatus: EventStatus) {
@@ -146,7 +152,7 @@ export async function changeEventStatus(id: string, nextStatus: EventStatus) {
       });
     }
 
-    return updated;
+    return withSeats(updated);
   });
 }
 
