@@ -13,7 +13,6 @@ données pour celles quitouchent à l'intégrité des données.
 ## Sommaire
 
 - [Stack](#stack)
-- [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Variables d'environnement](#variables-denvironnement)
 - [Commandes](#commandes)
@@ -44,54 +43,11 @@ données pour celles quitouchent à l'intégrité des données.
 
 ---
 
-## Prérequis
-
-- Node.js 22 ou supérieur
-- npm 10 ou supérieur
-- Docker Desktop (uniquement pour la base de données et la version conteneurisée)
-
----
-
 ## Installation
 
-### 1. Base de données
+### Avec Docker — toute l'application
 
-```bash
-docker compose up -d db
-```
-
-Le conteneur PostgreSQL démarre sur `localhost:5432` avec la base `eventhub`
-et la base de test `eventhub_test`. Le script
-`docker/postgres/init/01-create-test-db.sql` crée cette seconde base au premier
-démarrage.
-
-### 2. API
-
-```bash
-cd server
-npm install
-cp .env.example .env      # puis renseigner les secrets JWT
-npm run prisma:migrate    # applique les migrations
-npm run db:seed           # jeu de données de démonstration
-npm run dev               # http://localhost:4000/api
-```
-
-### 3. Frontend
-
-```bash
-cd client
-npm install
-npm run dev               # http://localhost:5173
-```
-
-Vite proxifie `/api` vers `http://localhost:4000`. Le front et l'API sont donc
-vus comme une origine unique par le navigateur : le cookie `HttpOnly` du refresh
-token est envoyé sans configuration CORS.
-
-> Si le port 5173 est déjà occupé, Vite choisit automatiquement le port suivant ;
-> l'adresse est affichée dans la sortie de la commande.
-
-### Démarrage complet en conteneurs
+Une seule commande démarre PostgreSQL, l'API et l'interface.
 
 ```bash
 docker compose up --build
@@ -99,13 +55,46 @@ docker compose up --build
 
 | Service | URL |
 |---|---|
-| Front (nginx + API via proxy `/api`) | http://localhost:8080 |
+| Interface (nginx, qui relaie `/api` vers l'API) | http://localhost:8080 |
 | API | http://localhost:4000/api |
 | Documentation OpenAPI | http://localhost:4000/api/docs |
 | PostgreSQL | `localhost:5432` |
 
 Un service `migrate` applique les migrations avant le démarrage de l'API, qui
 n'embarque que les dépendances de production.
+
+Jeu de données de démonstration (aucune installation de Node requise) :
+
+```bash
+docker compose run --rm migrate npx prisma db seed
+```
+
+### En développement — rechargement à chaud
+
+Cette variante ne lance que PostgreSQL en conteneur et exécute l'API et le front
+sur la machine, avec rechargement automatique.
+
+```bash
+docker compose up -d db
+
+cd server
+npm install
+cp .env.example .env      # puis renseigner les secrets JWT
+npm run prisma:migrate    # applique les migrations
+npm run db:seed           # jeu de données de démonstration
+npm run dev               # http://localhost:4000/api
+
+cd ../client
+npm install
+npm run dev               # http://localhost:5173
+```
+
+Vite proxifie `/api` vers `http://localhost:4000`. Le front et l'API sont donc
+vues comme une origine unique par le navigateur : le cookie `HttpOnly` du refresh
+token est envoyé sans configuration CORS.
+
+> Si le port 5173 est déjà occupé, Vite choisit automatiquement le port suivant ;
+> l'adresse est affichée dans la sortie de la commande.
 
 ---
 

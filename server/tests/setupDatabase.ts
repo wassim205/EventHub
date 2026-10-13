@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { EventStatus, RegistrationStatus, UserRole } from "../src/generated/prisma/enums.js";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { prisma as appPrisma } from "../src/lib/prisma.js";
-import { hashPassword } from "../src/lib/security.js";
+import { hashPassword } from "../src/lib/passwords.js";
 
 export const testPrisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),

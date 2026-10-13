@@ -1,17 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
-
-const BCRYPT_ROUNDS = 12;
-
-export function hashPassword(plain: string): Promise<string> {
-  return bcrypt.hash(plain, BCRYPT_ROUNDS);
-}
-
-export function verifyPassword(plain: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(plain, hash);
-}
 
 export type AccessTokenPayload = {
   sub: string;

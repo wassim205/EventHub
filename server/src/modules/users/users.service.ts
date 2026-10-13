@@ -2,7 +2,7 @@ import { UserRole } from "../../generated/prisma/enums.js";
 import { AppError } from "../../lib/errors.js";
 import { pageArgs, paginated } from "../../lib/http.js";
 import { prisma } from "../../lib/prisma.js";
-import { hashPassword } from "../../lib/security.js";
+import { hashPassword } from "../../lib/passwords.js";
 import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from "./users.schema.js";
 
 export async function listUsers(query: ListUsersQuery) {

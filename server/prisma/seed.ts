@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { hashPassword } from "../src/lib/security.js";
+import { hashPassword } from "../src/lib/passwords.js";
 import { EventStatus, RegistrationStatus, UserRole } from "../src/generated/prisma/enums.js";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 

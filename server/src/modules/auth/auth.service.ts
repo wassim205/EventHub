@@ -2,12 +2,12 @@ import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
 import { AppError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
+import { verifyPassword } from "../../lib/passwords.js";
 import {
   generateRefreshToken,
   hashRefreshToken,
   refreshTokenExpiry,
   signAccessToken,
-  verifyPassword,
 } from "../../lib/security.js";
 
 const publicUserSelect = {
