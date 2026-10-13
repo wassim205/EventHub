@@ -1,0 +1,124 @@
+// Design : les migrations sont pilotées par Prisma, mais tout ce que le schéma
+// Prisma ne sait pas exprimer (CHECK, index trigrammes) est ajouté à la main
+// dans server/prisma/migrations.
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  staff
+}
+
+enum EventStatus {
+  draft
+  published
+  cancelled
+}
+
+enum RegistrationStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+/// Comptes de l'application (équipes d'organisation), distincts des participants.
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  fullName     String   @map("full_name") @db.VarChar(120)
+  email        String   @unique @db.VarChar(180)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole @default(staff)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  events        Event[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// Un événement organisé par un membre de l'équipe (admin ou staff).
+model Event {
+  id              String      @id @default(uuid()) @db.Uuid
+  title           String      @db.VarChar(160)
+  description     String      @db.Text
+  location        String      @db.VarChar(160)
+  eventDate       DateTime    @map("event_date")
+  maxParticipants Int         @map("max_participants")
+  status          EventStatus @default(draft)
+  createdById     String      @map("created_by") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  createdBy     User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  registrations Registration[]
+
+  // Filtre "lister par statut" et tri chronologique de la liste des événements.
+  @@index([status])
+  @@index([eventDate])
+  @@map("events")
+}
+
+/// Personne qui s'inscrit à un ou plusieurs événements.
+model Participant {
+  id        String   @id @default(uuid()) @db.Uuid
+  fullName  String   @map("full_name") @db.VarChar(140)
+  email     String   @unique @db.VarChar(180)
+  phone     String?  @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  registrations Registration[]
+
+  @@index([fullName])
+  @@map("participants")
+}
+
+/// Table pivot entre participants et événements (relation N-N).
+model Registration {
+  id            String             @id @default(uuid()) @db.Uuid
+  eventId       String             @map("event_id") @db.Uuid
+  participantId String             @map("participant_id") @db.Uuid
+  status        RegistrationStatus @default(pending)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  // Règle métier : un participant ne peut s'inscrire qu'une fois par événement.
+  // C'est la base de données, et non seulement l'API, qui garantit cette règle.
+  @@unique([eventId, participantId])
+  // Comptage des places prises par événement (dashboard "top événements").
+  @@index([eventId, status])
+  // Historique des inscriptions d'un participant.
+  @@index([participantId])
+  // Compteurs par statut.
+  @@index([status])
+  // Statistique "inscriptions du jour".
+  @@index([createdAt])
+  @@map("registrations")
+}
+
+/// Sessions actives : seul le hash du refresh token est conservé, ce qui permet
+/// la rotation à chaque rafraîchissement et la révocation à la déconnexion.
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
