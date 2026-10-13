@@ -20,5 +20,49 @@ services:
       timeout: 5s
       retries: 10
 
+  # Les migrations sont appliquées par un service dédié, avec l'image de build
+  # (qui embarque le CLI Prisma). L'image d'exécution de l'API n'installe que
+  # les dépendances de production.
+  migrate:
+    build:
+      context: ./server
+      target: build
+    command: npx prisma migrate deploy
+    environment:
+      DATABASE_URL: postgresql://eventhub:eventhub@db:5432/eventhub?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./server
+    container_name: eventhub-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://eventhub:eventhub@db:5432/eventhub?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-in-production-please}
+      ACCESS_TOKEN_TTL: 30m
+      REFRESH_TOKEN_TTL_DAYS: 7
+      REFRESH_COOKIE_NAME: eventhub_refresh
+    ports:
+      - "4000:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./client
+    container_name: eventhub-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
